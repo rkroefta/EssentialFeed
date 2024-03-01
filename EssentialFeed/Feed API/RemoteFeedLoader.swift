@@ -19,7 +19,7 @@ public protocol HTTPClient {
 public final class RemoteFeedLoader {
     private let url: URL
     private let client: HTTPClient
-    
+
     public enum Error: Swift.Error {
         case connectivity
         case invalidData
@@ -34,34 +34,47 @@ public final class RemoteFeedLoader {
         self.url = url
         self.client = client
     }
-    
+
     public func load(completion: @escaping (Result) -> Void) {
         client.get(from: url) { result in
             switch result {
             case let .success(data, response):
-                if response.statusCode == 200, let root = try? JSONDecoder().decode(Root.self, from: data) {
-                    completion(.success(root.items.map({ $0.item })))
-                } else {
-                    completion(.failure(.invalidData))
+                do {
+                    let items = try FeedItemsMapper.map(data, response)
+                        completion(.success(items))
+                    } catch {
+                        completion(.failure(.invalidData))
+                    }
+                case .failure:
+                    completion(.failure(.connectivity))
                 }
-            case .failure:
-                completion(.failure(.connectivity))
             }
         }
     }
-}
 
-private struct Root: Decodable {
-    let items: [Item]
-}
+    private class FeedItemsMapper {
+        static func map(_ data: Data, _ response: HTTPURLResponse) throws -> [FeedItem] {
+            guard response.statusCode == 200 else {
+                throw RemoteFeedLoader.Error.invalidData
+            }
+            let root = try JSONDecoder().decode(Root.self, from: data)
+            return root.items.map { $0.item }
+        }
 
-private struct Item: Decodable {
-    let id: UUID
-    let description: String?
-    let location: String?
-    let image: URL
+        private struct Root: Decodable {
+            let items: [Item]
+        }
 
-    var item: FeedItem {
-        return FeedItem.init(id: id, description: description, location: location, imageURL: image)
+        private struct Item: Decodable {
+            let id: UUID
+            let description: String?
+            let location: String?
+            let image: URL
+
+            var item: FeedItem {
+                return FeedItem.init(id: id, description: description, location: location, imageURL: image)
+            }
+        }
     }
-}
+
+
