@@ -156,7 +156,7 @@ extension RemoteFeedLoaderTests {
                 XCTAssertEqual(receivedError, expectedError, file: file, line: line)
 
             default:
-                XCTFail("Expected result \(expectedResult) gort \(receveidResult) instead", file: file, line: line)
+                XCTFail("Expected result \(expectedResult) got \(receveidResult) instead", file: file, line: line)
             }
 
             exp.fulfill()
