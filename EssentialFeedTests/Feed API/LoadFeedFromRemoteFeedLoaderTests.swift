@@ -9,8 +9,8 @@ import XCTest
 import EssentialFeed
 
 
-final class RemoteFeedLoaderTests: XCTestCase {
-    
+final class LoadFeedFromRemoteFeedLoaderTests: XCTestCase {
+
     func test_init_doesnNotRequestDataFromURL() {
         let (_, client) = makeSUT()
         XCTAssertTrue(client.requestedURLs.isEmpty)
