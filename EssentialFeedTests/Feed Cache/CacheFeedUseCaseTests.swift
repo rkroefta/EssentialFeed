@@ -5,31 +5,58 @@
 //  Created by Rodrigo Kroef Tarouco on 13/05/24.
 //
 
+import EssentialFeed
 import XCTest
 
-final class CacheFeedUseCaseTests: XCTestCase {
+class LocalFeedLoader {
+    private let store: FeedStore
 
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
+    init(store: FeedStore) {
+        self.store = store
     }
 
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+    func save(_ items: [FeedItem]) {
+        store.deleteCachedFeed()
+    }
+}
+
+class FeedStore {
+    var deletedCachedFeedCallCount = 0
+
+    func deleteCachedFeed() {
+        deletedCachedFeedCallCount += 1
     }
 
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // Any test you write for XCTest can be annotated as throws and async.
-        // Mark your test throws to produce an unexpected failure when your test encounters an uncaught error.
-        // Mark your test async to allow awaiting for asynchronous code to complete. Check the results with assertions afterwards.
+
+}
+
+class CacheFeedUseCaseTests: XCTestCase {
+    
+    func testInitDoesNotDeleteCacheUponCreation() {
+        let store = FeedStore()
+        _ = LocalFeedLoader(store: store)
+
+        XCTAssertEqual(store.deletedCachedFeedCallCount, 0)
     }
 
-    func testPerformanceExample() throws {
-        // This is an example of a performance test case.
-        self.measure {
-            // Put the code you want to measure the time of here.
-        }
+    func testSaveRequestCacheDeletion() {
+        let store = FeedStore()
+        let sut = LocalFeedLoader(store: store)
+        let items = [uniqueItem(), uniqueItem()]
+
+        sut.save(items)
+
+        XCTAssertEqual(store.deletedCachedFeedCallCount, 1)
+    }
+
+    // MARK: - Helpers
+
+    private func uniqueItem() -> FeedItem {
+        return FeedItem(id: UUID(), description: "any", location: "any", imageURL: anyURL())
+    }
+
+    private func anyURL() -> URL {
+        return URL(string: "http://any-url.com")!
     }
 
 }
