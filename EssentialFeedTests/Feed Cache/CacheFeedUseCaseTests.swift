@@ -16,20 +16,35 @@ class LocalFeedLoader {
     }
 
     func save(_ items: [FeedItem]) {
-        store.deleteCachedFeed()
+        store.deleteCachedFeed { [unowned self] error in
+            if error == nil {
+                self.store.insert(items)
+            }
+        }
     }
 }
 
 class FeedStore {
+    typealias DeletionCompletion = (Error?) -> Void
     var deletedCachedFeedCallCount = 0
     var insertCallCount = 0
+    private var deletionCOmpletions = [DeletionCompletion]()
 
-    func deleteCachedFeed() {
+    func deleteCachedFeed(completion: @escaping DeletionCompletion) {
         deletedCachedFeedCallCount += 1
+        deletionCOmpletions.append(completion)
     }
 
-    func completionDeletion(with error: Error, at index: Int = 0) {
+    func completeDeletion(with error: Error, at index: Int = 0) {
+        deletionCOmpletions[index](error)
+    }
 
+    func completeDeletionSucessfully(at index: Int = 0) {
+        deletionCOmpletions[index](nil)
+    }
+
+    func insert(_ items: [FeedItem]) {
+        insertCallCount += 1
     }
 
 
@@ -46,10 +61,9 @@ class CacheFeedUseCaseTests: XCTestCase {
     func testSaveRequestCacheDeletion() {
         let (sut, store) = makeSUT()
         let items = [uniqueItem(), uniqueItem()]
-        let deletionError = anyNSError()
 
         sut.save(items)
-        store.completionDeletion(with: deletionError)
+
 
         XCTAssertEqual(store.deletedCachedFeedCallCount, 1)
     }
@@ -57,10 +71,22 @@ class CacheFeedUseCaseTests: XCTestCase {
     func testSaveDoesNotRequestCacheInsertionOnDeletionError() {
         let (sut, store) = makeSUT()
         let items = [uniqueItem(), uniqueItem()]
+        let deletionError = anyNSError()
 
         sut.save(items)
+        store.completeDeletion(with: deletionError)
 
         XCTAssertEqual(store.insertCallCount, 0)
+    }
+
+    func testSaveRequestsNewCacheInsertionOnSucessfullDeletion() {
+        let (sut, store) = makeSUT()
+        let items = [uniqueItem(), uniqueItem()]
+
+        sut.save(items)
+        store.completeDeletionSucessfully()
+
+        XCTAssertEqual(store.insertCallCount, 1)
     }
 
     // MARK: - Helpers
